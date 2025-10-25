@@ -7,8 +7,8 @@ import os
 
 # --- Configuración de la ruta absoluta del archivo de datos ---
 # ¡Asegúrate de que esta ruta sea correcta para tu sistema!
-DATA_FILE = "c:/Users/UserEliteBook/Documents/Proyecto_Sueno_IA/Sleep_health_and_lifestyle_dataset.csv"
-
+# CÓDIGO CORREGIDO PARA STREAMLIT CLOUD:
+DATA_FILE = "Sleep_health_and_lifestyle_dataset.csv"
 # =================================================================
 # 1. CARGA Y ENTRENAMIENTO DEL MODELO
 # =================================================================
@@ -69,3 +69,4 @@ else:
         # Aquí iría el resto de la lógica de codificación y predicción...
 
         st.success("¡El código de predicción se ejecutaría aquí!")
+
