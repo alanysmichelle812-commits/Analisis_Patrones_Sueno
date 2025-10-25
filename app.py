@@ -67,4 +67,5 @@ else:
     # --- Lógica de Predicción ---
     if submitted:
         # Aquí iría el resto de la lógica de codificación y predicción...
+
         st.success("¡El código de predicción se ejecutaría aquí!")
