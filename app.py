@@ -9,7 +9,7 @@ import numpy as np
 # Usamos la ruta RELATIVA, que funciona en Streamlit Cloud
 DATA_FILE = "Sleep_health_and_lifestyle_dataset.csv"
 
-# Definiciones para codificación (necesarias para la predicción)
+# Definiciones para codificación (deben coincidir con el preprocesamiento)
 OCCUPATION_MAP = {
     'Scientist': 0, 'Sales Representative': 1, 'Software Engineer': 2, 'Doctor': 3,
     'Engineer': 4, 'Accountant': 5, 'Nurse': 6, 'Teacher': 7, 'Broker': 8, 'Lawyer': 9,
@@ -19,7 +19,7 @@ BMI_MAP = {'Overweight': 0, 'Normal': 1, 'Normal Weight': 2, 'Obese': 3}
 
 
 # =================================================================
-# 1. CARGA Y ENTRENAMIENTO DEL MODELO
+# 1. CARGA Y ENTRENAMIENTO DEL MODELO (CORREGIDO el ValueError)
 # =================================================================
 @st.cache_data(show_spinner="Entrenando modelo y preparando datos...")
 def get_trained_model(data_file_name):
@@ -30,21 +30,29 @@ def get_trained_model(data_file_name):
 
     df = pd.read_csv(data_file_name)
 
-    # Preprocesamiento rápido (igual al usado en el script 01_preparacion_datos.py)
+    # Preprocesamiento rápido
     df['ESTRES_BINARIO'] = df['Stress Level'].apply(lambda x: 1 if x >= 7 else 0)
     df.drop(['Person ID', 'Stress Level', 'Quality of Sleep', 'Blood Pressure'], axis=1, inplace=True)
 
-    # Codificación de variables categóricas (usando los mapas predefinidos)
-    df['Gender_Encoded'] = df['Gender'].apply(lambda x: 1 if x == 'Male' else 0)
-    df['BMI_Encoded'] = df['BMI Category'].map(BMI_MAP).fillna(df['BMI Category'].mode()[0]).astype(int)
-    df['Occupation_Encoded'] = df['Occupation'].map(OCCUPATION_MAP).fillna(df['Occupation'].mode()[0]).astype(int)
+    # Codificación de Ocupación (Corregida: llenamos NaN con la moda codificada)
+    df['Occupation_Encoded'] = df['Occupation'].map(OCCUPATION_MAP)
+    # Calculamos la moda numérica de los valores codificados y llenamos NaN
+    moda_codificada_occ = df['Occupation_Encoded'].mode()[0]
+    df['Occupation_Encoded'] = df['Occupation_Encoded'].fillna(moda_codificada_occ).astype(int)
     
-    # Manejo de Sleep Disorder
+    # Codificación de BMI
+    df['BMI_Encoded'] = df['BMI Category'].map(BMI_MAP)
+    # Calculamos la moda numérica de los valores codificados y llenamos NaN
+    moda_codificada_bmi = df['BMI_Encoded'].mode()[0]
+    df['BMI_Encoded'] = df['BMI_Encoded'].fillna(moda_codificada_bmi).astype(int)
+
+    # Codificación de Género y Sleep Disorder
+    df['Gender_Encoded'] = df['Gender'].apply(lambda x: 1 if x == 'Male' else 0)
     df['SleepDisorder_Encoded'] = df['Sleep Disorder'].fillna('None').apply(lambda x: 0 if x == 'None' else (1 if x == 'Insomnia' else 2))
 
     df.drop(['Gender', 'BMI Category', 'Occupation', 'Sleep Disorder'], axis=1, inplace=True)
 
-    # Preparar para el modelo (usando las columnas finales)
+    # Preparar para el modelo
     X = df.drop('ESTRES_BINARIO', axis=1)
     y = df['ESTRES_BINARIO']
 
@@ -79,6 +87,8 @@ else:
             gender_input = st.selectbox("Género", ["Male", "Female"])
             occupation_input = st.selectbox("Ocupación", list(OCCUPATION_MAP.keys()))
             sleep_duration = st.slider("Duración del Sueño (horas)", min_value=4.0, max_value=10.0, value=7.5, step=0.1)
+            sleep_disorder = st.selectbox("Trastorno del Sueño (Usado para modelo)", ["None", "Insomnia", "Sleep Apnea"])
+
 
         with col2:
             bmi_input = st.selectbox("Categoría BMI", list(BMI_MAP.keys()))
@@ -91,11 +101,33 @@ else:
 
     # --- Lógica de Predicción ---
     if submitted:
-        # Codificación de los inputs
+        # Codificación de los inputs de usuario
         gender_encoded = 1 if gender_input == 'Male' else 0
-        bmi_encoded = BMI_MAP.get(bmi_input, 1) # Usa 1 (Normal) si no se encuentra
-        occupation_encoded = OCCUPATION_MAP.get(occupation_input, 0) # Usa 0 si no se encuentra (Scientist)
+        bmi_encoded = BMI_MAP.get(bmi_input, 1) # Normal si no se encuentra
+        occupation_encoded = OCCUPATION_MAP.get(occupation_input, 0) # Scientist si no se encuentra
+        
+        if sleep_disorder == "None":
+            sleep_disorder_encoded = 0
+        elif sleep_disorder == "Insomnia":
+            sleep_disorder_encoded = 1
+        else: # Sleep Apnea
+            sleep_disorder_encoded = 2
 
-        # Crear el DataFrame de entrada (Asegurarse que las columnas coincidan con las de 'feature_names')
-        input_data
+
+        # Crear el DataFrame de entrada (DEBE COINCIDIR CON feature_names del entrenamiento)
+        input_data = pd.DataFrame([[
+            age, 
+            sleep_duration, 
+            physical_activity, 
+            heart_rate, 
+            daily_steps, 
+            gender_encoded, 
+            bmi_encoded, 
+            occupation_encoded, 
+            sleep_disorder_encoded # Valor codificado de trastorno del sueño
+        ]], columns=feature_names)
+
+        # Predicción
+        try:
+            prediction = model.predict
 
